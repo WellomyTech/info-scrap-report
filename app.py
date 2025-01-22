@@ -2,10 +2,22 @@ from flask import Flask, render_template, request
 from openai import OpenAI
 import re
 import markdown
+from markupsafe import Markup
+from bs4 import BeautifulSoup
+from docx import Document
+from docx.shared import Pt, RGBColor
 import json
+import os
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
-client = OpenAI(api_key = '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')
+import time
+open_ai_api = os.getenv("OPEN_AI_API")
+print(f"This is open ai api {open_ai_api}")
+client = OpenAI(api_key = open_ai_api)
 
 
 app = Flask(__name__)
@@ -18,9 +30,26 @@ def index():
 def submit():
     topic_name = request.form['topic_name']
     region = request.form['region']
+
+    query = topic_name + region + "Latest NEWS"
+
+    source_links = google_results(query)
+
     first_chat_instructions = "You are an intelligent assistant tasked with analyzing internet activity related to a specific target (person, business, or organization) over the last 7 days. Your goal is to provide a high-level summary and structured output that highlights the most interesting and relevant insights, which will serve as a foundation for creating detailed individual reports."
 
-    first_prompt = f'You are a highly skilled internet analyst tasked with analyzing the online presence and activity of a specific target over the last 7 days. Your job is to produce a detailed, engaging, and structured analysis that provides actionable insights, measurable comparisons, and psychometric trends. This analysis will form the foundation for a comprehensive multi-page report. Target Details: Name: {topic_name}. Region: {region}. Timeframe: Analyze data specifically from the last 7 days. Instructions: Generate 9-11 Unique Topics: Identify at least 9-11 engaging and detailed topics related to the target’s online activity during the specified timeframe. Ensure each topic reflects key developments, public reactions, or noteworthy trends involving the target. The headings must be creative, specific, and newsworthy (e.g., “How [Target Name] Is Transforming Public Perception About [Topic]” or “The Surprising Impact of [Target Name]\'s Recent Actions on [Region]”). Avoid generic or repetitive titles—focus on highlighting unique insights and trends. Content Requirements for Each Topic: Detailed Summary: Provide an in-depth overview of the topic, including relevant activities or developments. Numerical Data: Include specific, measurable metrics such as: Engagement growth rates (e.g., “Engagement increased by 25% compared to last week”). Sentiment distribution percentages (e.g., “40% positive, 35% negative, and 25% neutral”). Platform-specific activity (e.g., “60% of mentions on Twitter, 25% on Facebook, and 15% on Instagram”). Comparative Insights: Highlight how the target’s performance compares to: Previous weeks. Competitors or peers in the same region or field. Broader trends within the industry or region. Psychometric Analysis: Analyze public sentiment and emotional responses: Identify dominant emotions like trust, anger, joy, or fear. Highlight any shifts in sentiment or behavioral trends. Tangible Impacts: Assess the measurable effects of the target’s activities: Changes in public opinion, reputation, or brand perception. Business outcomes, policy shifts, or other significant impacts. Highlight Recurring Themes and Trends: Identify major keywords, hashtags, or recurring phrases associated with the target. Specify which platforms (e.g., Twitter, Facebook, Instagram) saw the most activity for each theme. Predictions for the Future: Based on current data, provide forecasts on how public sentiment, activity levels, or the target’s influence might evolve in the coming weeks. Include data-driven trends and potential scenarios. Special Instructions: Ensure each topic has enough depth and detail to support a multi-page report. The output should include insightful, numerical, and comparative analysis where applicable. Avoid generic or overly broad headings. Focus on creating specific, impactful, and engaging topics tailored to the target. Clearly indicate if certain data points are unavailable, but maintain a comprehensive and analytical approach. Use a professional tone suitable for an executive-level audience. Output Format: Structure the response into a JSON object. For each heading, include subheadings and a detailed summary incorporating all specified data points.Output Format: Provide the output in the following structured format: {{ "target": "[Insert Name]", "entity_type": "[Person/Business/Organization]", "timeframe": "Last 7 days", "content_overview": [ {{ "heading": "[Heading Title 1]", "subheadings": [ "[Subheading 1.1]", "[Subheading 1.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }}, {{ "heading": "[Heading Title 2]", "subheadings": [ "[Subheading 2.1]", "[Subheading 2.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }} ] }}'
+    # first_prompt = f'You are a highly skilled internet analyst tasked with analyzing the online presence and activity of a specific target over the last 7 days. Your job is to produce a detailed, engaging, and structured analysis that provides actionable insights, measurable comparisons, and psychometric trends. This analysis will form the foundation for a comprehensive multi-page report. Target Details: Name: {topic_name}. Region: {region}. Timeframe: Analyze data specifically from the last 7 days. Instructions: Generate 9-11 Unique Topics: Identify at least 9-11 engaging and detailed topics related to the target’s online activity during the specified timeframe. Ensure each topic reflects key developments, public reactions, or noteworthy trends involving the target. The headings must be creative, specific, and newsworthy (e.g., “How [Target Name] Is Transforming Public Perception About [Topic]” or “The Surprising Impact of [Target Name]\'s Recent Actions on [Region]”). Avoid generic or repetitive titles—focus on highlighting unique insights and trends. Content Requirements for Each Topic: Detailed Summary: Provide an in-depth overview of the topic, including relevant activities or developments. Numerical Data: Include specific, measurable metrics such as: Engagement growth rates (e.g., “Engagement increased by 25% compared to last week”). Sentiment distribution percentages (e.g., “40% positive, 35% negative, and 25% neutral”). Platform-specific activity (e.g., “60% of mentions on Twitter, 25% on Facebook, and 15% on Instagram”). Comparative Insights: Highlight how the target’s performance compares to: Previous weeks. Competitors or peers in the same region or field. Broader trends within the industry or region. Psychometric Analysis: Analyze public sentiment and emotional responses: Identify dominant emotions like trust, anger, joy, or fear. Highlight any shifts in sentiment or behavioral trends. Tangible Impacts: Assess the measurable effects of the target’s activities: Changes in public opinion, reputation, or brand perception. Business outcomes, policy shifts, or other significant impacts. Highlight Recurring Themes and Trends: Identify major keywords, hashtags, or recurring phrases associated with the target. Specify which platforms (e.g., Twitter, Facebook, Instagram) saw the most activity for each theme. Predictions for the Future: Based on current data, provide forecasts on how public sentiment, activity levels, or the target’s influence might evolve in the coming weeks. Include data-driven trends and potential scenarios. Special Instructions: Ensure each topic has enough depth and detail to support a multi-page report. The output should include insightful, numerical, and comparative analysis where applicable. Avoid generic or overly broad headings. Focus on creating specific, impactful, and engaging topics tailored to the target. Clearly indicate if certain data points are unavailable, but maintain a comprehensive and analytical approach. Use a professional tone suitable for an executive-level audience. Output Format: Structure the response into a JSON object. For each heading, include subheadings and a detailed summary incorporating all specified data points.Output Format: Provide the output in the following structured format: {{ "target": "[Insert Name]", "entity_type": "[Person/Business/Organization]", "timeframe": "Last 7 days", "content_overview": [ {{ "heading": "[Heading Title 1]", "subheadings": [ "[Subheading 1.1]", "[Subheading 1.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }}, {{ "heading": "[Heading Title 2]", "subheadings": [ "[Subheading 2.1]", "[Subheading 2.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }} ] }}'
+
+    first_part_prompt = f""""You are a highly skilled internet analyst tasked with analyzing the online presence and activity of a specific target over the last 7 days. Your job is to produce a detailed, engaging, and structured analysis that provides actionable insights, measurable comparisons, and psychometric trends. This analysis will form the foundation for a comprehensive multi-page report. Source Limitation: Use only the information explicitly available in the source links provided below. Do not reference or incorporate any external knowledge, prior understanding, or information from other sources. All insights must be derived solely from the content of the provided links. Source Links: """
+    second_half_prompt = f"""Target Details: Name: {topic_name}. Region: {region}. Instructions: Generate 9-11 Unique Topics: Identify at least 9-11 engaging and detailed topics related to the target’s online activity during the specified timeframe. Ensure each topic reflects key developments, public reactions, or noteworthy trends involving the target. The headings must be creative, specific, and newsworthy (e.g., “How [Target Name] Is Transforming Public Perception About [Topic]” or “The Surprising Impact of [Target Name]’s Recent Actions on [Region]”). Avoid generic or repetitive titles—focus on highlighting unique insights and trends. Content Requirements for Each Topic: Detailed Summary: Provide an in-depth overview of the topic, including relevant activities or developments strictly sourced from the links. Numerical Data: Include specific, measurable metrics such as: Engagement growth rates (e.g., “Engagement increased by 25% compared to last week”). Sentiment distribution percentages (e.g., “40% positive, 35% negative, and 25% neutral”). Platform-specific activity (e.g., “60% of mentions on Twitter, 25% on Facebook, and 15% on Instagram”). Comparative Insights: Highlight how the target’s performance compares to: Previous weeks (if this data is available in the provided sources). Competitors or peers in the same region or field. Broader trends within the industry or region. Psychometric Analysis: Analyze public sentiment and emotional responses: Identify dominant emotions like trust, anger, joy, or fear. Highlight any shifts in sentiment or behavioral trends. Tangible Impacts: Assess the measurable effects of the target’s activities: Changes in public opinion, reputation, or brand perception. Business outcomes, policy shifts, or other significant impacts. Highlight Recurring Themes and Trends: Identify major keywords, hashtags, or recurring phrases associated with the target. Specify which platforms (e.g., Twitter, Facebook, Instagram) saw the most activity for each theme. Predictions for the Future: Based on current data, provide forecasts on how public sentiment, activity levels, or the target’s influence might evolve in the coming weeks. Include data-driven trends and potential scenarios. Special Instructions: Ensure each topic has enough depth and detail to support a multi-page report. The output should include insightful, numerical, and comparative analysis where applicable. Clearly indicate if certain data points are unavailable, but maintain a comprehensive and analytical approach. Use a professional tone suitable for an executive-level audience.Output Format: Structure the response into a JSON object. For each heading, include subheadings and a detailed summary incorporating all specified data points. json Copy code {{ "target": "[Insert Name]", "entity_type": "[Person/Business/Organization]", "timeframe": "Last 7 days", "content_overview": [ {{ "heading": "[Heading Title 1]", "subheadings": [ "[Subheading 1.1]", "[Subheading 1.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }}, {{ "heading": "[Heading Title 2]", "subheadings": [ "[Subheading 2.1]", "[Subheading 2.2]" ], "summary": "[Brief summary of this section and why it is relevant.]" }} ] }} Reminder: Adhere strictly to the information in the provided links. Any data or insight not explicitly found within the links must be omitted."""
+
+    first_page_prompt = f"You are an advanced data analyst tasked with creating an engaging and insightful introduction for the first page of a comprehensive report. Your goal is to analyze the content from the provided links and produce a captivating, data-rich narrative that highlights key insights, trends, and measurable impacts. The aim is to immediately grab the reader's attention and set the tone for the rest of the document. Topic should be {topic_name} and related to {region}. Source Links:"
+    
+    first_page_prompt_2 = f"""Instructions: Analyze the Links: Extract key trends, data points, and recurring themes across all the sources. Focus on areas where measurable impacts are evident, such as increases or decreases in engagement, sentiment, or influence. Present Analytical Insights: Provide a mix of qualitative insights and quantitative data to make the introduction compelling. Use percentages, growth rates, or probabilities wherever applicable (e.g., "Engagement increased by 25% in the last week," "Public sentiment shifted by 40% in favor of X"). Include Impactful Highlights: Summarize how the person, organization, or topic influenced the region or audience within the timeframe. Highlight tangible outcomes, such as changes in public perception, policy developments, or increased awareness around specific themes. Make It Interesting to Read: Use dynamic and vivid language to make the content engaging and relatable. Avoid overly technical or dense phrasing; instead, prioritize clear, compelling storytelling supported by data. Identify Key Themes and Trends: Summarize the major topics and themes that emerge from the sources, such as public sentiment, engagement growth, or focus on specific issues. Briefly describe why these themes are relevant or important. Keep It Compact and Focused: Ensure the content is concise yet informative, suitable for a professional audience. Example Content Flow: Start with a compelling hook or headline summarizing the overall findings. Follow with 2-3 sentences describing the primary insights, supported by numerical data. Highlight one or two significant impacts or trends that stand out from the analysis. Conclude with a forward-looking statement or key takeaway that encourages the reader to explore further. Reminder: Use only the provided links as your source of information. Ensure the first page content is engaging, analytical, and provides enough detail to captivate the reader and encourage them to delve deeper into the document."""
+
+    first_page_prompt_final = first_page_prompt + source_links + first_page_prompt_2
+    first_page_response = chat_assist(first_chat_instructions, first_page_prompt_final)
+
+    first_prompt = first_part_prompt + source_links + second_half_prompt
 
     response = chat_assist(first_chat_instructions, first_prompt)
 
@@ -38,10 +67,10 @@ def submit():
     except json.JSONDecodeError as e:
 
         return f"Error parsing JSON: {e}\n This is the str JSON: {str_json_response}"
-    full_report = ""
+    full_report = "" + first_page_response
 
     for each_topic in json_response['content_overview']:
-        detail_adder_prompt = f'You are a professional report writer tasked with generating detailed and engaging content for a multi-page report. The report is about the online presence and activities of a specific target over the last 7 days. You will be provided with a heading, subheadings, and a brief summary. Your job is to expand this information into a comprehensive, well-structured, and detailed section. Details: - Heading: {each_topic['heading']} - Subheadings: {each_topic['subheadings']} - Summary: {each_topic['summary']}Instructions: 1. Write a detailed introduction for the section based on the heading and summary. 2. Expand each subheading into a detailed subsection: - Include numerical data, insights, and analysis where applicable. - Provide comparisons, psychometric insights, and examples. - Explain the significance of the subtopic and its impact. 3. Conclude the section with a summary of key takeaways and implications. Special Instructions: - Ensure the tone is professional and engaging. - Use data-driven insights and concrete examples to support your writing. - Write content that flows naturally and connects ideas between subsections.'
+        # detail_adder_prompt = f'You are a professional report writer tasked with generating detailed and engaging content for a multi-page report. The report is about the online presence and activities of a specific target over the last 7 days. You will be provided with a heading, subheadings, and a brief summary. Your job is to expand this information into a comprehensive, well-structured, and detailed section. Details: - Heading: {each_topic['heading']} - Subheadings: {each_topic['subheadings']} - Summary: {each_topic['summary']}Instructions: 1. Write a detailed introduction for the section based on the heading and summary. 2. Expand each subheading into a detailed subsection: - Include numerical data, insights, and analysis where applicable. - Provide comparisons, psychometric insights, and examples. - Explain the significance of the subtopic and its impact. 3. Conclude the section with a summary of key takeaways and implications. Special Instructions: - Ensure the tone is professional and engaging. - Use data-driven insights and concrete examples to support your writing. - Write content that flows naturally and connects ideas between subsections.'
 
         detail_adder_prompt = f'You are a professional report writer tasked with producing highly engaging, data-driven, and contextually rich sections for a report. Each topic should feel tailored and insightful, with the details woven naturally into the narrative to maintain relevance and interest. The content must be easy to analyze while keeping the reader engaged. Guidelines for Writing: Contextual Introduction: Start with a brief but engaging introduction that sets the context for the topic and its significance. Data Integration: Incorporate quantitative data (e.g., percentages, growth rates, and engagement metrics) into the narrative. Use platform-specific insights where relevant, but only if supported by the data. Provide comparative metrics when logical (e.g., previous periods, competitors, or industry benchmarks). Dynamic Structure: Let the structure adapt to the topic’s unique aspects. For example: If sentiment analysis is central, focus on emotional dynamics and trends. If platform-specific activity is significant, emphasize platform breakdowns. If actionable recommendations are clear, make them the highlight. Avoid forcing any data or subsections if the input doesn’t support it; instead, highlight what is significant or missing. Style: Blend narrative and analysis to keep the content informative and engaging. Use professional but conversational language where appropriate. Focus on creating an immersive experience for the reader. Task: Based on the given {each_topic['heading']}, {each_topic['subheadings']}, and {each_topic['summary']}, expand the information into a well-rounded, data-rich section. Make the content dynamic, logical, and engaging, emphasizing actionable insights and measurable trends wherever they naturally fit. Avoid unnecessary rigidity; prioritize meaningful details that make the report compelling.'
 
@@ -59,7 +88,42 @@ def submit():
     #     html_report = "No input provided yet. Submit text to see the report."
     #     file = open("output.html","r")
     #     html_report = file.read()
-    return render_template('response.html', content=html_report)
+    soup = BeautifulSoup(html_report, 'html.parser')
+    doc = Document()
+
+    for element in soup.contents:
+        if element.name == 'h1':
+            heading = doc.add_heading(level=1)
+            run = heading.add_run(element.text)
+            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.size = Pt(24)
+        elif element.name == 'h2':
+            heading = doc.add_heading(level=2)
+            run = heading.add_run(element.text)
+            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.size = Pt(20)
+        elif element.name == 'h3':
+            heading = doc.add_heading(level=3)
+            run = heading.add_run(element.text)
+            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.size = Pt(16)
+        elif element.name == 'h4':
+            heading = doc.add_heading(level=4)
+            run = heading.add_run(element.text)
+            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.size = Pt(14)
+        elif element.name == 'p':
+            heading = doc.add_paragraph()
+            run = heading.add_run(element.text)
+            run.font.color.rgb = RGBColor(0, 0, 0)
+            run.font.size = Pt(11)
+        elif element.name == 'ul':
+            for li in element.find_all('li'):
+                doc.add_paragraph(li.text, style='List Bullet')
+    doc.save("output.docx")
+
+    safe_report = Markup(html_report)
+    return render_template('response.html', content=safe_report)
 
 def chat_assist(instructions, prompt):
     chat_response = client.chat.completions.create(
@@ -70,6 +134,48 @@ def chat_assist(instructions, prompt):
         ]
     )
     return chat_response.choices[0].message.content
+
+
+def google_results(query):
+    # Initialize WebDriver
+    driver_path ="C:/Users/aupad/Downloads/chromedriver-win64/chromedriver.exe"  # Update with the path to your chromedriver
+
+    try:
+        # Open Google
+        # Create a Service object
+        service = Service(driver_path)
+
+        # Pass the Service object to the WebDriver
+        driver = webdriver.Chrome(service=service)
+
+        # Example usage: Open Google
+        pre_search_url = "https://www.google.com/search?as_q="
+        post_search_filters = "&as_epq=&as_oq=&as_eq=&as_nlo=&as_nhi=&lr=&cr=&as_qdr=w&as_sitesearch=&as_occt=any&as_filetype=&tbs="
+
+        search_query = query
+
+        formatted_string = search_query.strip().replace(" ", "+")
+
+        driver.get(pre_search_url+formatted_string+post_search_filters)
+        # Wait for results to load
+        time.sleep(1)
+
+        # Fetch search result links and titles
+        results = driver.find_elements(By.CSS_SELECTOR, 'div.g')  # Google search result selector
+        output_link = ""
+        for result in results:
+            try:
+                title = result.find_element(By.TAG_NAME, "h3").text
+                link = result.find_element(By.TAG_NAME, "a").get_attribute("href")
+                output_link += str(link) + " "
+            except Exception as e:
+                # Handle cases where title or link is missing
+                continue
+        print(output_link)
+    finally:
+        # Close the browser
+        driver.quit()
+        return output_link
 
 if __name__ == '__main__':
     app.run(debug=True)

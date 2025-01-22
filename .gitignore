@@ -1,0 +1,8 @@
+/output
+/backup
+/static/images/*
+data.json
+*.docx
+*.tmp
+*.json
+.env
