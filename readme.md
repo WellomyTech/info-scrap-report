@@ -1,6 +1,3 @@
-Here’s the `README.md` code tailored to your requirements:
-
-```markdown
 # 🌟 Project Guide to Run Locally 🌟
 
 Welcome to the **Project Setup Guide**! Follow the steps below to get the project up and running on your local machine. 🚀
