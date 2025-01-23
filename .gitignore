@@ -6,3 +6,4 @@ data.json
 *.tmp
 *.json
 .env
+compare.py

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file, jsonify
 from openai import OpenAI
 import re
 import markdown
@@ -8,15 +8,18 @@ from docx import Document
 from docx.shared import Pt, RGBColor
 import json
 import os
+import random
+from io import BytesIO
+from dotenv import load_dotenv
+import requests
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from googleapiclient.discovery import build
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 
 import time
 open_ai_api = os.getenv("OPEN_AI_API")
-print(f"This is open ai api {open_ai_api}")
 client = OpenAI(api_key = open_ai_api)
 
 
@@ -31,7 +34,7 @@ def submit():
     topic_name = request.form['topic_name']
     region = request.form['region']
 
-    query = topic_name + region + "Latest NEWS"
+    query = topic_name + " " + region + " Latest NEWS"
 
     source_links = google_results(query)
 
@@ -46,10 +49,10 @@ def submit():
     
     first_page_prompt_2 = f"""Instructions: Analyze the Links: Extract key trends, data points, and recurring themes across all the sources. Focus on areas where measurable impacts are evident, such as increases or decreases in engagement, sentiment, or influence. Present Analytical Insights: Provide a mix of qualitative insights and quantitative data to make the introduction compelling. Use percentages, growth rates, or probabilities wherever applicable (e.g., "Engagement increased by 25% in the last week," "Public sentiment shifted by 40% in favor of X"). Include Impactful Highlights: Summarize how the person, organization, or topic influenced the region or audience within the timeframe. Highlight tangible outcomes, such as changes in public perception, policy developments, or increased awareness around specific themes. Make It Interesting to Read: Use dynamic and vivid language to make the content engaging and relatable. Avoid overly technical or dense phrasing; instead, prioritize clear, compelling storytelling supported by data. Identify Key Themes and Trends: Summarize the major topics and themes that emerge from the sources, such as public sentiment, engagement growth, or focus on specific issues. Briefly describe why these themes are relevant or important. Keep It Compact and Focused: Ensure the content is concise yet informative, suitable for a professional audience. Example Content Flow: Start with a compelling hook or headline summarizing the overall findings. Follow with 2-3 sentences describing the primary insights, supported by numerical data. Highlight one or two significant impacts or trends that stand out from the analysis. Conclude with a forward-looking statement or key takeaway that encourages the reader to explore further. Reminder: Use only the provided links as your source of information. Ensure the first page content is engaging, analytical, and provides enough detail to captivate the reader and encourage them to delve deeper into the document."""
 
-    first_page_prompt_final = first_page_prompt + source_links + first_page_prompt_2
+    first_page_prompt_final = first_page_prompt + str(source_links) + first_page_prompt_2
     first_page_response = chat_assist(first_chat_instructions, first_page_prompt_final)
 
-    first_prompt = first_part_prompt + source_links + second_half_prompt
+    first_prompt = first_part_prompt + str(source_links) + second_half_prompt
 
     response = chat_assist(first_chat_instructions, first_prompt)
 
@@ -120,10 +123,17 @@ def submit():
         elif element.name == 'ul':
             for li in element.find_all('li'):
                 doc.add_paragraph(li.text, style='List Bullet')
-    doc.save("output.docx")
+    # Save the document to a BytesIO stream
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
 
-    safe_report = Markup(html_report)
-    return render_template('response.html', content=safe_report)
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name=f"{topic_name}_{region}_report.docx",
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
 
 def chat_assist(instructions, prompt):
     chat_response = client.chat.completions.create(
@@ -137,45 +147,36 @@ def chat_assist(instructions, prompt):
 
 
 def google_results(query):
-    # Initialize WebDriver
-    driver_path ="C:/Users/aupad/Downloads/chromedriver-win64/chromedriver.exe"  # Update with the path to your chromedriver
-
+    api_key = os.getenv("GOOGLE_SEARCH_API")
+    search_engine_id = os.getenv("SEARCH_ENGINE_ID")
+    service = build("customsearch", "v1", developerKey=api_key)
+    
     try:
-        # Open Google
-        # Create a Service object
-        service = Service(driver_path)
+        result = service.cse().list(
+            q=query,  # Search query
+            cx=search_engine_id,     # Custom Search Engine ID
+            dateRestrict = "w1",
+        ).execute()
+        # Extract the results
+        if "items" in result:
+            print([item["link"] for item in result["items"]])
+            return [item["link"] for item in result["items"]]
+        else:
+            print("No results found in the response.")
+            return None
 
-        # Pass the Service object to the WebDriver
-        driver = webdriver.Chrome(service=service)
+    except Exception as e:
+        print("An error occurred:", str(e))
+        return None
 
-        # Example usage: Open Google
-        pre_search_url = "https://www.google.com/search?as_q="
-        post_search_filters = "&as_epq=&as_oq=&as_eq=&as_nlo=&as_nhi=&lr=&cr=&as_qdr=w&as_sitesearch=&as_occt=any&as_filetype=&tbs="
 
-        search_query = query
-
-        formatted_string = search_query.strip().replace(" ", "+")
-
-        driver.get(pre_search_url+formatted_string+post_search_filters)
-        # Wait for results to load
-        time.sleep(1)
-
-        # Fetch search result links and titles
-        results = driver.find_elements(By.CSS_SELECTOR, 'div.g')  # Google search result selector
-        output_link = ""
-        for result in results:
-            try:
-                title = result.find_element(By.TAG_NAME, "h3").text
-                link = result.find_element(By.TAG_NAME, "a").get_attribute("href")
-                output_link += str(link) + " "
-            except Exception as e:
-                # Handle cases where title or link is missing
-                continue
-        print(output_link)
-    finally:
-        # Close the browser
-        driver.quit()
-        return output_link
+@app.route('/generate', methods=['GET', 'POST'])
+def generate():
+    if request.method == 'POST':
+        # Simulate a long-running process
+        time.sleep(5)  # Replace this with the actual long process
+        return jsonify({"status": "completed", "message": "Document is ready!"})
+    return render_template('loading.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
