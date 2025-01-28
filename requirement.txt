@@ -1,2 +1,7 @@
-setuptools
-undetected_chromedriver
+flask
+openai
+markdown
+beautifulsoup4
+google-api-python-client
+python-docx
+dotenv

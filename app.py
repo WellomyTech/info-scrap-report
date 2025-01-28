@@ -2,21 +2,14 @@ from flask import Flask, render_template, request, send_file, jsonify
 from openai import OpenAI
 import re
 import markdown
-from markupsafe import Markup
 from bs4 import BeautifulSoup
 from docx import Document
 from docx.shared import Pt, RGBColor
 import json
 import os
-import random
 from io import BytesIO
-from dotenv import load_dotenv
-import requests
 
 from googleapiclient.discovery import build
-from selenium.webdriver.common.proxy import Proxy, ProxyType
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
 
 import time
 open_ai_api = os.getenv("OPEN_AI_API")
@@ -80,7 +73,15 @@ def submit():
         output = chat_assist(detail_adder_instructions, detail_adder_prompt)
         full_report += output
     
-    html_report = markdown.markdown(full_report)
+
+    summary_prompt = "Summarize the provided text into a concise, maximum 2-page report. Include key insights organized into bullet points, ensure quantitative data is highlighted, and cover major topics such as public sentiment, humanitarian impact, community reactions, and key challenges with recommendations for action. If the text references any steps the U.S. government is taking to address the challenges, include those details; otherwise, omit any mention of potential U.S. government actions or solutions."
+
+    summary = chat_assist("None", full_report + summary_prompt)
+
+    
+
+    return save_to_doc(summary, topic_name, region)
+
 
     # if request.method == 'POST':
     #     # Retrieve user input from the floating text box
@@ -91,6 +92,10 @@ def submit():
     #     html_report = "No input provided yet. Submit text to see the report."
     #     file = open("output.html","r")
     #     html_report = file.read()
+
+def save_to_doc(full_report, topic_name, region):
+
+    html_report = markdown.markdown(full_report)
     soup = BeautifulSoup(html_report, 'html.parser')
     doc = Document()
 
@@ -98,22 +103,22 @@ def submit():
         if element.name == 'h1':
             heading = doc.add_heading(level=1)
             run = heading.add_run(element.text)
-            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.color.rgb = RGBColor(1, 1, 60)
             run.font.size = Pt(24)
         elif element.name == 'h2':
             heading = doc.add_heading(level=2)
             run = heading.add_run(element.text)
-            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.color.rgb = RGBColor(1, 1, 60)
             run.font.size = Pt(20)
         elif element.name == 'h3':
             heading = doc.add_heading(level=3)
             run = heading.add_run(element.text)
-            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.color.rgb = RGBColor(1, 1, 60)
             run.font.size = Pt(16)
         elif element.name == 'h4':
             heading = doc.add_heading(level=4)
             run = heading.add_run(element.text)
-            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.font.color.rgb = RGBColor(1, 1, 60)
             run.font.size = Pt(14)
         elif element.name == 'p':
             heading = doc.add_paragraph()
