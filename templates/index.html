@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Input Form</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Form</title>
+
+    <!-- Include jQuery and Select2 CSS & JS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+    <!-- Custom CSS -->
     <style>
+        /* Global Styles */
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
             margin: 0;
             padding: 0;
             display: flex;
@@ -13,58 +23,342 @@
             align-items: center;
             height: 100vh;
         }
+
+        /* Form Container */
         .container {
             background: #fff;
-            padding: 20px 30px;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-        h1 {
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            width: 400px;
             text-align: center;
+        }
+
+        h1 {
             color: #333;
+            font-size: 24px;
             margin-bottom: 20px;
         }
+
+        /* Form Styles */
         label {
             display: block;
-            font-size: 14px;
-            margin-bottom: 8px;
+            text-align: left;
+            font-weight: bold;
+            margin: 10px 0 5px;
             color: #555;
         }
-        input[type="text"] {
+
+        input, select {
             width: 100%;
             padding: 10px;
-            margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            font-size: 14px;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
             font-size: 16px;
-            cursor: pointer;
+            margin-bottom: 15px;
         }
+
+        /* Add extra space below the region dropdown */
+        #region {
+            margin-bottom: 25px;
+        }
+
+        /* Button Styling */
+        button {
+            background: #4facfe;
+            color: #fff;
+            border: none;
+            margin-top: 40px;
+            padding: 12px;
+            width: 100%;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
         button:hover {
-            background-color: #45a049;
+            background: #00c6ff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 500px) {
+            .container {
+                width: 90%;
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Enter Details</h1>
+        <h1>Search for Information</h1>
         <form action="/submit" method="post">
             <label for="topic_name">Topic Name:</label>
-            <input type="text" id="topic_name" name="topic_name" placeholder="Enter topic name">
-            <label for="region">Region:</label>
-            <input type="text" id="region" name="region" placeholder="Enter region">
+            <input type="text" id="topic_name" name="topic_name" placeholder="Enter topic name" required>
+            
+            <label for="region">Select Region:</label>
+            <select id="region" name="region" required>
+                <option value="">Search or Select a Country</option>
+            </select>
+
             <button type="submit">Submit</button>
         </form>
     </div>
+
+    <script>
+        $(document).ready(function() {
+            // List of countries with their two-letter codes
+            var countries = [
+                { id: "af", text: "Afghanistan" },
+                { id: "al", text: "Albania" },
+                { id: "dz", text: "Algeria" },
+                { id: "as", text: "American Samoa" },
+                { id: "ad", text: "Andorra" },
+                { id: "ao", text: "Angola" },
+                { id: "ai", text: "Anguilla" },
+                { id: "aq", text: "Antarctica" },
+                { id: "ag", text: "Antigua and Barbuda" },
+                { id: "ar", text: "Argentina" },
+                { id: "am", text: "Armenia" },
+                { id: "aw", text: "Aruba" },
+                { id: "au", text: "Australia" },
+                { id: "at", text: "Austria" },
+                { id: "az", text: "Azerbaijan" },
+                { id: "bs", text: "Bahamas" },
+                { id: "bh", text: "Bahrain" },
+                { id: "bd", text: "Bangladesh" },
+                { id: "bb", text: "Barbados" },
+                { id: "by", text: "Belarus" },
+                { id: "be", text: "Belgium" },
+                { id: "bz", text: "Belize" },
+                { id: "bj", text: "Benin" },
+                { id: "bm", text: "Bermuda" },
+                { id: "bt", text: "Bhutan" },
+                { id: "bo", text: "Bolivia" },
+                { id: "ba", text: "Bosnia and Herzegovina" },
+                { id: "bw", text: "Botswana" },
+                { id: "bv", text: "Bouvet Island" },
+                { id: "br", text: "Brazil" },
+                { id: "io", text: "British Indian Ocean Territory" },
+                { id: "bn", text: "Brunei Darussalam" },
+                { id: "bg", text: "Bulgaria" },
+                { id: "bf", text: "Burkina Faso" },
+                { id: "bi", text: "Burundi" },
+                { id: "kh", text: "Cambodia" },
+                { id: "cm", text: "Cameroon" },
+                { id: "ca", text: "Canada" },
+                { id: "cv", text: "Cape Verde" },
+                { id: "ky", text: "Cayman Islands" },
+                { id: "cf", text: "Central African Republic" },
+                { id: "td", text: "Chad" },
+                { id: "cl", text: "Chile" },
+                { id: "cn", text: "China" },
+                { id: "cx", text: "Christmas Island" },
+                { id: "cc", text: "Cocos (Keeling) Islands" },
+                { id: "co", text: "Colombia" },
+                { id: "km", text: "Comoros" },
+                { id: "cg", text: "Congo" },
+                { id: "cd", text: "Congo, the Democratic Republic of the" },
+                { id: "ck", text: "Cook Islands" },
+                { id: "cr", text: "Costa Rica" },
+                { id: "ci", text: "Cote D'ivoire" },
+                { id: "hr", text: "Croatia" },
+                { id: "cu", text: "Cuba" },
+                { id: "cy", text: "Cyprus" },
+                { id: "cz", text: "Czech Republic" },
+                { id: "dk", text: "Denmark" },
+                { id: "dj", text: "Djibouti" },
+                { id: "dm", text: "Dominica" },
+                { id: "do", text: "Dominican Republic" },
+                { id: "ec", text: "Ecuador" },
+                { id: "eg", text: "Egypt" },
+                { id: "sv", text: "El Salvador" },
+                { id: "gq", text: "Equatorial Guinea" },
+                { id: "er", text: "Eritrea" },
+                { id: "ee", text: "Estonia" },
+                { id: "et", text: "Ethiopia" },
+                { id: "fk", text: "Falkland Islands (Malvinas)" },
+                { id: "fo", text: "Faroe Islands" },
+                { id: "fj", text: "Fiji" },
+                { id: "fi", text: "Finland" },
+                { id: "fr", text: "France" },
+                { id: "gf", text: "French Guiana" },
+                { id: "pf", text: "French Polynesia" },
+                { id: "tf", text: "French Southern Territories" },
+                { id: "ga", text: "Gabon" },
+                { id: "gm", text: "Gambia" },
+                { id: "ge", text: "Georgia" },
+                { id: "de", text: "Germany" },
+                { id: "gh", text: "Ghana" },
+                { id: "gi", text: "Gibraltar" },
+                { id: "gr", text: "Greece" },
+                { id: "gl", text: "Greenland" },
+                { id: "gd", text: "Grenada" },
+                { id: "gp", text: "Guadeloupe" },
+                { id: "gu", text: "Guam" },
+                { id: "gt", text: "Guatemala" },
+                { id: "gn", text: "Guinea" },
+                { id: "gw", text: "Guinea-Bissau" },
+                { id: "gy", text: "Guyana" },
+                { id: "ht", text: "Haiti" },
+                { id: "hm", text: "Heard Island and Mcdonald Islands" },
+                { id: "va", text: "Holy See (Vatican City State)" },
+                { id: "hn", text: "Honduras" },
+                { id: "hk", text: "Hong Kong" },
+                { id: "hu", text: "Hungary" },
+                { id: "is", text: "Iceland" },
+                { id: "in", text: "India" },
+                { id: "id", text: "Indonesia" },
+                { id: "ir", text: "Iran, Islamic Republic of" },
+                { id: "iq", text: "Iraq" },
+                { id: "ie", text: "Ireland" },
+                { id: "il", text: "Israel" },
+                { id: "it", text: "Italy" },
+                { id: "jm", text: "Jamaica" },
+                { id: "jp", text: "Japan" },
+                { id: "jo", text: "Jordan" },
+                { id: "kz", text: "Kazakhstan" },
+                { id: "ke", text: "Kenya" },
+                { id: "ki", text: "Kiribati" },
+                { id: "kp", text: "Korea, Democratic People's Republic of" },
+                { id: "kr", text: "Korea, Republic of" },
+                { id: "kw", text: "Kuwait" },
+                { id: "kg", text: "Kyrgyzstan" },
+                { id: "la", text: "Lao People's Democratic Republic" },
+                { id: "lv", text: "Latvia" },
+                { id: "lb", text: "Lebanon" },
+                { id: "ls", text: "Lesotho" },
+                { id: "lr", text: "Liberia" },
+                { id: "ly", text: "Libyan Arab Jamahiriya" },
+                { id: "li", text: "Liechtenstein" },
+                { id: "lt", text: "Lithuania" },
+                { id: "lu", text: "Luxembourg" },
+                { id: "mo", text: "Macao" },
+                { id: "mk", text: "Macedonia, the Former Yugosalv Republic of" },
+                { id: "mg", text: "Madagascar" },
+                { id: "mw", text: "Malawi" },
+                { id: "my", text: "Malaysia" },
+                { id: "mv", text: "Maldives" },
+                { id: "ml", text: "Mali" },
+                { id: "mt", text: "Malta" },
+                { id: "mh", text: "Marshall Islands" },
+                { id: "mq", text: "Martinique" },
+                { id: "mr", text: "Mauritania" },
+                { id: "mu", text: "Mauritius" },
+                { id: "yt", text: "Mayotte" },
+                { id: "mx", text: "Mexico" },
+                { id: "fm", text: "Micronesia, Federated States of" },
+                { id: "md", text: "Moldova, Republic of" },
+                { id: "mc", text: "Monaco" },
+                { id: "mn", text: "Mongolia" },
+                { id: "ms", text: "Montserrat" },
+                { id: "ma", text: "Morocco" },
+                { id: "mz", text: "Mozambique" },
+                { id: "mm", text: "Myanmar" },
+                { id: "na", text: "Namibia" },
+                { id: "nr", text: "Nauru" },
+                { id: "np", text: "Nepal" },
+                { id: "nl", text: "Netherlands" },
+                { id: "an", text: "Netherlands Antilles" },
+                { id: "nc", text: "New Caledonia" },
+                { id: "nz", text: "New Zealand" },
+                { id: "ni", text: "Nicaragua" },
+                { id: "ne", text: "Niger" },
+                { id: "ng", text: "Nigeria" },
+                { id: "nu", text: "Niue" },
+                { id: "nf", text: "Norfolk Island" },
+                { id: "mp", text: "Northern Mariana Islands" },
+                { id: "no", text: "Norway" },
+                { id: "om", text: "Oman" },
+                { id: "pk", text: "Pakistan" },
+                { id: "pw", text: "Palau" },
+                { id: "ps", text: "Palestinian Territory, Occupied" },
+                { id: "pa", text: "Panama" },
+                { id: "pg", text: "Papua New Guinea" },
+                { id: "py", text: "Paraguay" },
+                { id: "pe", text: "Peru" },
+                { id: "ph", text: "Philippines" },
+                { id: "pn", text: "Pitcairn" },
+                { id: "pl", text: "Poland" },
+                { id: "pt", text: "Portugal" },
+                { id: "pr", text: "Puerto Rico" },
+                { id: "qa", text: "Qatar" },
+                { id: "re", text: "Reunion" },
+                { id: "ro", text: "Romania" },
+                { id: "ru", text: "Russian Federation" },
+                { id: "rw", text: "Rwanda" },
+                { id: "sh", text: "Saint Helena" },
+                { id: "kn", text: "Saint Kitts and Nevis" },
+                { id: "lc", text: "Saint Lucia" },
+                { id: "pm", text: "Saint Pierre and Miquelon" },
+                { id: "vc", text: "Saint Vincent and the Grenadines" },
+                { id: "ws", text: "Samoa" },
+                { id: "sm", text: "San Marino" },
+                { id: "st", text: "Sao Tome and Principe" },
+                { id: "sa", text: "Saudi Arabia" },
+                { id: "sn", text: "Senegal" },
+                { id: "cs", text: "Serbia and Montenegro" },
+                { id: "sc", text: "Seychelles" },
+                { id: "sl", text: "Sierra Leone" },
+                { id: "sg", text: "Singapore" },
+                { id: "sk", text: "Slovakia" },
+                { id: "si", text: "Slovenia" },
+                { id: "sb", text: "Solomon Islands" },
+                { id: "so", text: "Somalia" },
+                { id: "za", text: "South Africa" },
+                { id: "gs", text: "South Georgia and the South Sandwich Islands" },
+                { id: "es", text: "Spain" },
+                { id: "lk", text: "Sri Lanka" },
+                { id: "sd", text: "Sudan" },
+                { id: "sr", text: "Suriname" },
+                { id: "sj", text: "Svalbard and Jan Mayen" },
+                { id: "sz", text: "Swaziland" },
+                { id: "se", text: "Sweden" },
+                { id: "ch", text: "Switzerland" },
+                { id: "sy", text: "Syrian Arab Republic" },
+                { id: "tw", text: "Taiwan, Province of China" },
+                { id: "tj", text: "Tajikistan" },
+                { id: "tz", text: "Tanzania, United Republic of" },
+                { id: "th", text: "Thailand" },
+                { id: "tl", text: "Timor-Leste" },
+                { id: "tg", text: "Togo" },
+                { id: "tk", text: "Tokelau" },
+                { id: "to", text: "Tonga" },
+                { id: "tt", text: "Trinidad and Tobago" },
+                { id: "tn", text: "Tunisia" },
+                { id: "tr", text: "Turkey" },
+                { id: "tm", text: "Turkmenistan" },
+                { id: "tc", text: "Turks and Caicos Islands" },
+                { id: "tv", text: "Tuvalu" },
+                { id: "ug", text: "Uganda" },
+                { id: "ua", text: "Ukraine" },
+                { id: "ae", text: "United Arab Emirates" },
+                { id: "uk", text: "United Kingdom" },
+                { id: "us", text: "United States" },
+                { id: "um", text: "United States Minor Outlying Islands" },
+                { id: "uy", text: "Uruguay" },
+                { id: "uz", text: "Uzbekistan" },
+                { id: "vu", text: "Vanuatu" },
+                { id: "ve", text: "Venezuela" },
+                { id: "vn", text: "Viet Nam" },
+                { id: "vg", text: "Virgin Islands, British" },
+                { id: "vi", text: "Virgin Islands, U.S." },
+                { id: "wf", text: "Wallis and Futuna" },
+                { id: "eh", text: "Western Sahara" },
+                { id: "ye", text: "Yemen" },
+                { id: "zm", text: "Zambia" },
+                { id: "zw", text: "Zimbabwe" }
+            ];
+
+            // Initialize Select2 with country list
+            $('#region').select2({
+                data: countries,
+                placeholder: "Search or Select a Country",
+                allowClear: true,
+                width: '100%'
+            });
+        });
+    </script>
 </body>
 </html>

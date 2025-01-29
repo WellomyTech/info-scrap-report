@@ -9,16 +9,15 @@ import json
 import os
 from io import BytesIO
 import logging
-import sys
-
+from variable import country_map
 from googleapiclient.discovery import build
 
 import time
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[
-    logging.StreamHandler(sys.stdout),
-    logging.StreamHandler(sys.stderr)
-])
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[
+#     logging.StreamHandler(sys.stdout),
+#     logging.StreamHandler(sys.stderr)
+# ])
 
 open_ai_api = os.getenv("OPEN_AI_API")
 if open_ai_api != None:
@@ -26,7 +25,7 @@ if open_ai_api != None:
 else:
     logging.info("OPEN AI API not found")
 
-logging.info("open_ai_api")
+logging.info(open_ai_api)
 
 
 app = Flask(__name__)
@@ -38,11 +37,11 @@ def index():
 @app.route('/submit', methods=['POST'])
 def submit():
     topic_name = request.form['topic_name']
-    region = request.form['region']
-
+    region_code = request.form['region']
+    region = country_map.get(region_code, "Unknown")
     query = topic_name + " " + region + " Latest NEWS"
 
-    source_links = google_results(query)
+    source_links = google_results(query, region_code)
 
     first_chat_instructions = "You are an intelligent assistant tasked with analyzing internet activity related to a specific target (person, business, or organization) over the last 7 days. Your goal is to provide a high-level summary and structured output that highlights the most interesting and relevant insights, which will serve as a foundation for creating detailed individual reports."
 
@@ -88,16 +87,17 @@ def submit():
             full_report += output
         
 
-        summary_prompt = "Summarize the provided text into a concise, maximum 2-page report. Include key insights organized into bullet points, ensure quantitative data is highlighted, and cover major topics such as public sentiment, humanitarian impact, community reactions, and key challenges with recommendations for action. If the text references any steps the U.S. government is taking to address the challenges, include those details; otherwise, omit any mention of potential U.S. government actions or solutions."
+        summary_prompt = "Summarize the provided text into a concise, maximum 2-page report. Include key insights organized into bullet points, ensure quantitative data is highlighted, and cover major topics such as public sentiment, humanitarian impact, community reactions, and key challenges with recommendations for action. If the text references any steps the U.S. government is taking to address the challenges, include those details; otherwise, strictly omit any mention of potential U.S. government actions or solutions. Also make sure the formatting is proper including heading have big fonts and details have small fonts, and have atleast full 2 pages long length."
 
         summary = chat_assist("None", full_report + summary_prompt)
 
+        resource_links = "Resource:\n" + "\n".join(source_links)
+
+        return save_to_doc(summary + resource_links , topic_name, region)
     except Exception as e:
         app.logger.error(f"Error occured: {e}")
 
     
-
-    return save_to_doc(summary, topic_name, region)
 
 
     # if request.method == 'POST':
@@ -168,7 +168,7 @@ def chat_assist(instructions, prompt):
     return chat_response.choices[0].message.content
 
 
-def google_results(query):
+def google_results(query, region_code):
     api_key = os.getenv("GOOGLE_SEARCH_API")
     search_engine_id = os.getenv("SEARCH_ENGINE_ID")
     service = build("customsearch", "v1", developerKey=api_key)
@@ -178,6 +178,7 @@ def google_results(query):
             q=query,  # Search query
             cx=search_engine_id,     # Custom Search Engine ID
             dateRestrict = "w1",
+            gl=region_code
         ).execute()
         # Extract the results
         if "items" in result:
