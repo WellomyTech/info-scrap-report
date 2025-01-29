@@ -21,7 +21,10 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %
 ])
 
 open_ai_api = os.getenv("OPEN_AI_API")
-client = OpenAI(api_key = open_ai_api)
+if open_ai_api != None:
+    client = OpenAI(api_key = open_ai_api)
+else:
+    logging.info("OPEN AI API not found")
 
 
 app = Flask(__name__)
