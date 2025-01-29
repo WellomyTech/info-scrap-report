@@ -26,6 +26,8 @@ if open_ai_api != None:
 else:
     logging.info("OPEN AI API not found")
 
+logging.info("open_ai_api")
+
 
 app = Flask(__name__)
 
