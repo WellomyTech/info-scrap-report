@@ -8,10 +8,18 @@ from docx.shared import Pt, RGBColor
 import json
 import os
 from io import BytesIO
+import logging
+import sys
 
 from googleapiclient.discovery import build
 
 import time
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s", handlers=[
+    logging.StreamHandler(sys.stdout),
+    logging.StreamHandler(sys.stderr)
+])
+
 open_ai_api = os.getenv("OPEN_AI_API")
 client = OpenAI(api_key = open_ai_api)
 
@@ -63,20 +71,24 @@ def submit():
     except json.JSONDecodeError as e:
 
         return f"Error parsing JSON: {e}\n This is the str JSON: {str_json_response}"
-    full_report = "" + first_page_response
+    try:
+        full_report = "" + first_page_response
 
-    for each_topic in json_response['content_overview']:
-        # detail_adder_prompt = f'You are a professional report writer tasked with generating detailed and engaging content for a multi-page report. The report is about the online presence and activities of a specific target over the last 7 days. You will be provided with a heading, subheadings, and a brief summary. Your job is to expand this information into a comprehensive, well-structured, and detailed section. Details: - Heading: {each_topic['heading']} - Subheadings: {each_topic['subheadings']} - Summary: {each_topic['summary']}Instructions: 1. Write a detailed introduction for the section based on the heading and summary. 2. Expand each subheading into a detailed subsection: - Include numerical data, insights, and analysis where applicable. - Provide comparisons, psychometric insights, and examples. - Explain the significance of the subtopic and its impact. 3. Conclude the section with a summary of key takeaways and implications. Special Instructions: - Ensure the tone is professional and engaging. - Use data-driven insights and concrete examples to support your writing. - Write content that flows naturally and connects ideas between subsections.'
+        for each_topic in json_response['content_overview']:
+            # detail_adder_prompt = f'You are a professional report writer tasked with generating detailed and engaging content for a multi-page report. The report is about the online presence and activities of a specific target over the last 7 days. You will be provided with a heading, subheadings, and a brief summary. Your job is to expand this information into a comprehensive, well-structured, and detailed section. Details: - Heading: {each_topic['heading']} - Subheadings: {each_topic['subheadings']} - Summary: {each_topic['summary']}Instructions: 1. Write a detailed introduction for the section based on the heading and summary. 2. Expand each subheading into a detailed subsection: - Include numerical data, insights, and analysis where applicable. - Provide comparisons, psychometric insights, and examples. - Explain the significance of the subtopic and its impact. 3. Conclude the section with a summary of key takeaways and implications. Special Instructions: - Ensure the tone is professional and engaging. - Use data-driven insights and concrete examples to support your writing. - Write content that flows naturally and connects ideas between subsections.'
 
-        detail_adder_prompt = f'You are a professional report writer tasked with producing highly engaging, data-driven, and contextually rich sections for a report. Each topic should feel tailored and insightful, with the details woven naturally into the narrative to maintain relevance and interest. The content must be easy to analyze while keeping the reader engaged. Guidelines for Writing: Contextual Introduction: Start with a brief but engaging introduction that sets the context for the topic and its significance. Data Integration: Incorporate quantitative data (e.g., percentages, growth rates, and engagement metrics) into the narrative. Use platform-specific insights where relevant, but only if supported by the data. Provide comparative metrics when logical (e.g., previous periods, competitors, or industry benchmarks). Dynamic Structure: Let the structure adapt to the topic’s unique aspects. For example: If sentiment analysis is central, focus on emotional dynamics and trends. If platform-specific activity is significant, emphasize platform breakdowns. If actionable recommendations are clear, make them the highlight. Avoid forcing any data or subsections if the input doesn’t support it; instead, highlight what is significant or missing. Style: Blend narrative and analysis to keep the content informative and engaging. Use professional but conversational language where appropriate. Focus on creating an immersive experience for the reader. Task: Based on the given {each_topic['heading']}, {each_topic['subheadings']}, and {each_topic['summary']}, expand the information into a well-rounded, data-rich section. Make the content dynamic, logical, and engaging, emphasizing actionable insights and measurable trends wherever they naturally fit. Avoid unnecessary rigidity; prioritize meaningful details that make the report compelling.'
+            detail_adder_prompt = f'You are a professional report writer tasked with producing highly engaging, data-driven, and contextually rich sections for a report. Each topic should feel tailored and insightful, with the details woven naturally into the narrative to maintain relevance and interest. The content must be easy to analyze while keeping the reader engaged. Guidelines for Writing: Contextual Introduction: Start with a brief but engaging introduction that sets the context for the topic and its significance. Data Integration: Incorporate quantitative data (e.g., percentages, growth rates, and engagement metrics) into the narrative. Use platform-specific insights where relevant, but only if supported by the data. Provide comparative metrics when logical (e.g., previous periods, competitors, or industry benchmarks). Dynamic Structure: Let the structure adapt to the topic’s unique aspects. For example: If sentiment analysis is central, focus on emotional dynamics and trends. If platform-specific activity is significant, emphasize platform breakdowns. If actionable recommendations are clear, make them the highlight. Avoid forcing any data or subsections if the input doesn’t support it; instead, highlight what is significant or missing. Style: Blend narrative and analysis to keep the content informative and engaging. Use professional but conversational language where appropriate. Focus on creating an immersive experience for the reader. Task: Based on the given {each_topic['heading']}, {each_topic['subheadings']}, and {each_topic['summary']}, expand the information into a well-rounded, data-rich section. Make the content dynamic, logical, and engaging, emphasizing actionable insights and measurable trends wherever they naturally fit. Avoid unnecessary rigidity; prioritize meaningful details that make the report compelling.'
 
-        output = chat_assist(detail_adder_instructions, detail_adder_prompt)
-        full_report += output
-    
+            output = chat_assist(detail_adder_instructions, detail_adder_prompt)
+            full_report += output
+        
 
-    summary_prompt = "Summarize the provided text into a concise, maximum 2-page report. Include key insights organized into bullet points, ensure quantitative data is highlighted, and cover major topics such as public sentiment, humanitarian impact, community reactions, and key challenges with recommendations for action. If the text references any steps the U.S. government is taking to address the challenges, include those details; otherwise, omit any mention of potential U.S. government actions or solutions."
+        summary_prompt = "Summarize the provided text into a concise, maximum 2-page report. Include key insights organized into bullet points, ensure quantitative data is highlighted, and cover major topics such as public sentiment, humanitarian impact, community reactions, and key challenges with recommendations for action. If the text references any steps the U.S. government is taking to address the challenges, include those details; otherwise, omit any mention of potential U.S. government actions or solutions."
 
-    summary = chat_assist("None", full_report + summary_prompt)
+        summary = chat_assist("None", full_report + summary_prompt)
+
+    except Exception as e:
+        app.logger.error(f"Error occured: {e}")
 
     
 
@@ -132,7 +144,7 @@ def save_to_doc(full_report, topic_name, region):
     file_stream = BytesIO()
     doc.save(file_stream)
     file_stream.seek(0)
-
+    app.logger.info("Sending response file")
     return send_file(
         file_stream,
         as_attachment=True,
